@@ -802,14 +802,8 @@ def cmd_postprocess(name, output_dir, cpus, local_density_threshold, local_neigh
         dataset.write_h5ad(h5ad_path)
         fig = plot_stability_error(dataset=dataset)
         utils.save_fig(fig, os.path.join(output_dir, name, name + '.k_selection'))
-<<<<<<< Updated upstream
     
 @click.command("usage-heatmap")
-=======
-
-
-@click.command("annotated-heatmap")
->>>>>>> Stashed changes
 @click.option(
     "-i", "--input_h5ad", type=click.Path(exists=True, dir_okay=False), required=True, help="Path to AnnData (.h5ad) file containing cNMF results.")
 @click.option(
@@ -822,7 +816,6 @@ def cmd_postprocess(name, output_dir, cpus, local_density_threshold, local_neigh
     '--show_sample_labels', is_flag=True,
     help="Show sample labels on usage heatmap")
 @click.option(
-<<<<<<< Updated upstream
     '--subsample', type=int, default=None,
     help="Randomly subsample this many samples/cells (without replacement) for usage heatmaps. Defaults to no subsetting.")
 @click.option(
@@ -846,14 +839,6 @@ def cmd_usage_heatmap(input_h5ad, output_dir, metadata_colors_toml, show_sample_
         sys.exit(1)
 
 
-=======
-    '--hide_sample_labels', is_flag=True,
-    help="Hide sample labels on usage heatmap")
-def cmd_annotated_heatmap(input_h5ad, output_dir, metadata_colors_toml, max_categories_per_layer, hide_sample_labels):
-    """
-    Create heatmaps of usages with annotation tracks.
-    """
->>>>>>> Stashed changes
     os.makedirs(output_dir, exist_ok=True)
     dataset = Dataset.from_h5ad(input_h5ad)
     
@@ -1043,7 +1028,6 @@ def cmd_map_gene_ids(input_h5ad, output_h5ad, source_ids, dest_ids, source_speci
         message += f"\n\t{mapping_type}: {count}"
     logging.info(message)
     dataset.write_h5ad(output_h5ad)
-
 
 @click.command(name="create-config")
 @click.option('-i', '--input_h5ad', type=click.Path(exists=True, dir_okay=False), multiple=True, help=".h5ad file with cNMF results. Can be used multiple times to specify one or more datasets from which to create a config.toml file.")
@@ -1411,6 +1395,7 @@ def cmd_integrate(output_dir, config_toml, communities_toml, colors_toml, cpus):
               help="minimum NES for heatmap plots")
 @click.option("--vmax", type=float, default=0.5,
               help="maximum NES for heatmap plots")
+
 @click.option("--no_plot", is_flag=True,
               help="Skip plotting geneset significance heatmaps")
 @click.option('--cpus', type=int, default=cpus_available, show_default=True,
@@ -1542,6 +1527,7 @@ def cmd_ssgsea(output_dir, pkl_file, h5ad_file, gene_sets, min_intersection, max
               help="maximum -log10(pval) for heatmap plots")
 @click.option("--no_plot", is_flag=True,
               help="Skip plotting geneset significance heatmaps")
+
 def cmd_gprofiler(output_dir, pkl_file, h5ad_file, gene_sets, species, min_intersection, max_intersection, n_hsg, cmap, vmin, vmax, no_plot):
     """
     Perform gProfiler gene set analysis of highly-scoring genes from mosaicMPI programs. If a network_integration.pkl file
