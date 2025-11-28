@@ -1654,6 +1654,77 @@ def cmd_gprofiler(output_dir, pkl_file, h5ad_file, gene_sets, species, min_inter
                       "a network_integration.pkl.gz file to run g:Profiler on programs.")
         sys.exit(1)
 
+# TODO: Add some code to select the number of highly scoring genes to use for MGS in a flexible manner. This would involve calculating a program specific threshold for the gene scores of a program.
+@click.command(name="marker_gene_score")
+@click.option(
+    "-o", '--output_dir', type=click.Path(file_okay=False), default=os.getcwd(), show_default=True,
+    help="Output directory. All output will be placed in [output_dir]/[name]/marker_gene_score/[gene_sets]/...")
+@click.option(
+    "-n", "--name", type=str, required=True, 
+    help="Name for cNMF analysis. All output will be placed in [output_dir]/[name]/marker_gene_score/[gene_sets]/...")
+@click.option('-g', '--gene_sets', type=str, required=True, default = "GO_Biological_Process_2023", show_default=True,
+              help="Path to GMT file with gene sets or Enrichr Library name.")
+@click.option('-i', '--h5ad_file', type=click.Path(exists=True, dir_okay=False), multiple=False,
+              help="Path to .h5ad file from `mosaicmpi postprocess`")
+@click.option("--n_hsg", default=1000, show_default=True,
+              help="Number of highly scoring genes to use for Marker Gene Scores. Either string 'flex' or 'int'. Default: 1000")
+def cmd_marker_gene_score(output_dir, pkl_file, h5ad_file, gene_sets, min_intersection, max_intersection, cmap, vmin, vmax, no_plot, cpus):
+    """
+    Compute and plot Marker Gene Score (MGS) for mosaicMPI programs. If a .h5ad file is provided, MGS is performed on all programs.
+    """
+    from .genesets import program_marker_gene_scores, order_genesets
+
+    # isolate the gmt file name
+    gene_set_name = os.path.basename(gene_sets)
+    gene_set_name = os.path.splitext(gene_set_name)[0]
+
+    # create directory structure, warn if not empty
+    output_dir = os.path.join(output_dir, "marker_gene_score", f"{gene_set_name}")
+    output_dir = os.path.normpath(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    if os.listdir(output_dir):
+        logging.warning(f"{output_dir} is not empty. Files may be overwritten.")
+
+    # write to log file
+    utils.start_logging(os.path.join(output_dir, "logfile.txt"))
+
+    # TODO: Make the MGS detailed file, save the results, and based on the program, remove the detailed results for the 2nd plot
+    logging.info(f"Running MGS...")
+    if h5ad_file and not pkl_file:
+        # run MGS on all programs from a .h5ad file
+        output_filename = "program_nes.txt"
+        dataset = Dataset.from_h5ad(h5ad_file)
+        programs = dataset.get_programs()
+    else:
+        logging.error("mosaicmpi MGS requires a factorized dataset (.h5ad) file to run MGS on programs.")
+        sys.exit(1) 
+    
+    # run MGS
+    result = program_marker_gene_scores(program_df=programs, n_hsg=1000, gene_sets=gene_set_name, scale_output=False, filter_output=False, detailed=True)
+    result.summary.to_csv(os.path.join(output_dir, "result.txt"), sep="\t")
+
+    if h5ad_file and not pkl_file:
+        # create MGS NES heatmaps separately for each k
+        n_k = dataset.adata.uns["kvals"].index.size
+        for k in tqdm(dataset.adata.uns["kvals"].index, total=n_k, unit="k", desc="Plotting heatmaps"):
+            df = result.prog_nes[k].dropna(how="all")
+            df = df.sort_index(axis=1)
+            df = order_genesets(df)
+            df.to_csv(os.path.join(output_dir, f"ordered_genesets_k{k}.txt"), sep="\t")
+            if not no_plot:
+                fig, figlegend = plot_geneset_heatmap(df=df, cmap=cmap, vmin=vmin, vmax=vmax)
+                ax = fig.axes[0]
+                ax.set_title("MGS NES\n" + gene_sets)
+                ax.set_xlabel("")
+                ax.set_ylabel("")
+                for _, spine in ax.spines.items():
+                    spine.set_visible(True)
+                    spine.set_color('#aaaaaa') 
+                ax.set_xlabel(f"Program (k={k})")
+                figlegend.savefig(os.path.join(output_dir, f"ordered_genesets_k{k}.legend.pdf"))
+                fig.savefig(os.path.join(output_dir, f"ordered_genesets_k{k}.pdf"))
+                plt.close(fig)
+                plt.close(figlegend)
 
 @click.command(name="compare-integrations")
 @click.option('-o', '--output_dir', type=click.Path(file_okay=False), required=True,
@@ -1778,6 +1849,7 @@ cli.add_command(cmd_create_config)
 cli.add_command(cmd_integrate)
 cli.add_command(cmd_ssgsea)
 cli.add_command(cmd_gprofiler)
+cli.add_command(cmd_marker_gene_score)
 cli.add_command(cmd_compare_integrations)
 cli.add_command(cmd_transfer_labels)
 

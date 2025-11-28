@@ -134,3 +134,6 @@ dmypy.json
 .vscode/
 test copy.ipynb
 test.ipynb
+
+# MacOS
+.DS_Store
